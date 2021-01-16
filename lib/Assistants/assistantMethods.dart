@@ -56,4 +56,13 @@ class AssistantMethods {
         res["routes"][0]["legs"][0]["duration"]["value"];
     return directionDetails;
   }
+
+  static int calculateFares(DirectionDetails directionDetails) {
+    //in terms of USD
+    double timeTraveledFare = (directionDetails.durationValue / 60) * 0.20;
+    double distancTraveledFare = (directionDetails.distanceValue / 60) * 0.20;
+    double totalFareAmount = timeTraveledFare + distancTraveledFare;
+    // double totalLocalAmount = totalFareAmount * 1100;
+    return totalFareAmount.truncate();
+  }
 }
