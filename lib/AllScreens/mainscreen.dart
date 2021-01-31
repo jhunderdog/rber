@@ -53,6 +53,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   BitmapDescriptor nearByIcon;
   List<NearbyAvailableDrivers> availableDrivers;
+  String state = "normal";
 
   @override
   void initState() {
@@ -92,6 +93,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   void cancelRideRequest() {
     rideRequestRef.remove();
+    setState(() {
+      state = "normal";
+    });
   }
 
   void displayRequestRideContainer() {
@@ -579,6 +583,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                         padding: EdgeInsets.symmetric(horizontal: 16.0),
                         child: RaisedButton(
                           onPressed: () {
+                            state = "requesting";
                             displayRequestRideContainer();
                             availableDrivers =
                                 GeoFireAssistant.nearbyAvailableDriversList;
@@ -939,7 +944,40 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         String token = snap.value.toString();
         AssistantMethods.sendNotificationToDriver(
             token, context, rideRequestRef.key);
+      } else {
+        return;
       }
+      const oneSecondPassed = Duration(seconds: 1);
+      // Timer 작동방식
+      var timer = Timer.periodic(oneSecondPassed, (timer) {
+        if (state != "requesting") {
+          driversRef.child(driver.key).child("newRide").set("cancelled");
+          driversRef.child(driver.key).child("newRide").onDisconnect();
+          driverRequesttimeout = 40;
+          timer.cancel();
+        }
+        driverRequesttimeout = driverRequesttimeout - 1;
+        driversRef.child(driver.key).child("newRide").onValue.listen((event) {
+          if (event.snapshot.value.toString() == "accepted") {
+            driversRef
+                .child(driver.key)
+                .child("newRide")
+                .onDisconnect(); //what's this?
+            driverRequesttimeout = 40;
+            timer.cancel();
+          }
+        });
+        if (driverRequesttimeout == 0) {
+          driversRef.child(driver.key).child("newRide").set("timeout");
+          driversRef
+              .child(driver.key)
+              .child("newRide")
+              .onDisconnect(); //what's this?
+          driverRequesttimeout = 40;
+          timer.cancel();
+          searchNearestDriver();
+        }
+      });
     });
   }
 }
