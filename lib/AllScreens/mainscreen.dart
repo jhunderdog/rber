@@ -11,6 +11,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:rider_app/AllScreens/loginScreen.dart';
 import 'package:rider_app/AllScreens/searchScreen.dart';
+import 'package:rider_app/AllWidgets/CollectFareDialog.dart';
 import 'package:rider_app/AllWidgets/Divider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:rider_app/AllWidgets/noDriverAvailableDialog.dart';
@@ -93,7 +94,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     };
 
     rideRequestRef.set(rideinfoMap);
-    rideStreamSubscription = rideRequestRef.onValue.listen((event) {
+    rideStreamSubscription = rideRequestRef.onValue.listen((event) async {
       //Stream
       if (event.snapshot.value == null) {
         return;
@@ -136,6 +137,26 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         displayDriverDetailsContainer();
         Geofire.stopListener();
         deleteGeofileMarkers();
+      }
+      if (statusRide == "ended") {
+        if (event.snapshot.value["fares"] != null) {
+          int fare = int.parse(event.snapshot.value["fares"].toString());
+          var res = await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) => CollectFareDialog(
+              paymentMethod: "cash",
+              fareAmount: fare,
+            ),
+          );
+          if (res == "close") {
+            rideRequestRef.onDisconnect();
+            rideRequestRef = null;
+            rideStreamSubscription.cancel();
+            rideStreamSubscription = null;
+            resetApp();
+          }
+        }
       }
     });
   }
@@ -221,6 +242,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       markersSet.clear();
       circlesSet.clear();
       pLineCoordinates.clear();
+
+      statusRide = "";
+      driverName = "";
+      driverphone = "";
+      carDetailsDriver = "";
+      rideStatus = "Driver is Coming";
+      driverDetailsContainerHeight = 0.0;
     });
     locatePosition();
   }
